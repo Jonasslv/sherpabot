@@ -1,11 +1,23 @@
 const { Client } = require('discord.js');
 const { readFileSync } = require('fs');
-const { checkCommand } = require('./src/utils.js');
 const { retrieveAllTokensData, getTokenList, getAVAXValue, } = require('./src/graph.js');
+const { ethers } = require('ethers');
 const lodash = require('lodash');
+const { Constants } = require('./src/resources.js');
+const SUPPLY_ABI = `[{"type": "function","stateMutability": "view","payable": false,"outputs":`+
+  `[{"type": "uint256","name": "","internalType": "uint256"}],"name": "totalSupply","inputs": [],`+
+  `"constant": true}]`;
 
 //Create instance of bot.
 const client = new Client();
+const provider = new ethers.providers.StaticJsonRpcProvider(Constants.RPCURL);
+
+
+const enumStatus =  Object.freeze({
+  price:0,
+  mcap:1
+});
+var currentStatus = enumStatus.price;
 
 //Sync read to wait for settings
 var settings = JSON.parse(readFileSync('./settings.json'));
@@ -32,10 +44,26 @@ async function refreshSherpaData(client) {
   const orderedResult = lodash.orderBy(filteredResult, ["totalLiquidity", "tradeVolume"], ['desc', 'desc']);
   const tokenPrice = (getAVAXValue() * orderedResult[0].derivedETH).toFixed(2);
 
+  const sherpaContract = new ethers.Contract(Constants.SHERPAToken,SUPPLY_ABI,provider);
+  const totalSupply = await sherpaContract.totalSupply()/1e18;
+
+  const mcap = `Total Mcap $${((tokenPrice * totalSupply)/1_000_000).toFixed(2)}M`;
+
+  let relevantInformation;
+  switch(currentStatus){
+    case enumStatus.price:
+      relevantInformation = `SHERPA $${tokenPrice}`;
+      currentStatus = enumStatus.mcap;
+    break;
+    case enumStatus.mcap:
+      relevantInformation = mcap;
+      currentStatus = enumStatus.price;
+    break;
+  }
   client.user.setPresence({
     status: 'online',
     activity: {
-      name: `SHERPA $${tokenPrice}`,
+      name: `${relevantInformation}`,
       type: "PLAYING"
     }
   });
