@@ -1,0 +1,5 @@
+{
+  "tokenid": "insert",
+  "botprefix": "s!",
+  "refreshTokenList": 60000
+}

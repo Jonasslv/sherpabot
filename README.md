@@ -1,0 +1,2 @@
+# Sherpabot
+Sherpabot Discord Bot
